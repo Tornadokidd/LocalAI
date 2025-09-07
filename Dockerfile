@@ -28,13 +28,13 @@ RUN mkdir -p /run/localai
 RUN echo "default" > /run/localai/capability
 
 # Vulkan requirements
-RUN <<EOT bash
+RUN bash <<EOT
     if [ "${BUILD_TYPE}" = "vulkan" ] && [ "${SKIP_DRIVERS}" = "false" ]; then
         apt-get update && \
         apt-get install -y  --no-install-recommends \
             software-properties-common pciutils wget gpg-agent && \
-        wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | apt-key add - && \
-        wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list && \
+        wget -qO /usr/share/keyrings/lunarg-vulkan-keyring.gpg https://packages.lunarg.com/lunarg-signing-key-pub.asc && \
+        echo "deb [signed-by=/usr/share/keyrings/lunarg-vulkan-keyring.gpg] https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list" > /etc/apt/sources.list.d/lunarg-vulkan-jammy.list && \
         apt-get update && \
         apt-get install -y \
             vulkan-sdk && \
@@ -158,7 +158,7 @@ ENV PATH=$PATH:/root/go/bin:/usr/local/go/bin
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2 && \
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@1958fcbe2ca8bd93af633f11e97d44e567e945af
 
-COPY --chmod=644 custom-ca-certs/* /usr/local/share/ca-certificates/
+COPY custom-ca-certs/* /usr/local/share/ca-certificates/
 RUN update-ca-certificates
 
 
@@ -318,9 +318,10 @@ COPY --from=builder /build/local-ai ./
 # Make sure the models directory exists
 RUN mkdir -p /models /backends
 
+
 # Define the health check command
-HEALTHCHECK --interval=1m --timeout=10m --retries=10 \
-  CMD curl -f ${HEALTHCHECK_ENDPOINT} || exit 1
+HEALTHCHECK --interval=1m --timeout=10s --retries=10 \
+    CMD curl -f ${HEALTHCHECK_ENDPOINT} || exit 1
 
 VOLUME /models /backends
 EXPOSE 8080
